@@ -122,3 +122,151 @@ instacart |>
 ```
 
 # Problem #2
+
+```{r}
+#Import brfss data and convert into tibble dataframe
+data("brfss_smart2010")
+brfss_smart2010 = 
+  brfss_smart2010 |> 
+  as_tibble()
+```
+
+### __First__, do some data cleaning:
+
+* format the data to use appropriate variable names;
+
+```{r}
+#COnvert variable names into snakecase
+brfss_smart2010 =
+  brfss_smart2010 |> 
+  janitor::clean_names()
+```
+
+* focus on the “Overall Health” topic
+
+```{r}
+#Filter responses where topic == "OVerall Health Only"
+brfss_overall_health =
+  brfss_smart2010 |> 
+  filter(topic == "Overall Health")
+
+# brfss_overall_health |>
+#   group_by(response) |> 
+#   count()
+```
+
+* include only responses from “Excellent” to “Poor”:
+
+```{r}
+#Filter to include only responses that contain "Excellent", "Very good", "Good", "Fair", "Poor"
+brfss_overall_health = 
+  brfss_overall_health |> 
+  filter(response == "Poor" | 
+           response == "Fair" | 
+           response == "Good" | 
+           response == "Very good" | 
+           response == "Excellent"
+         )
+```
+
+
+* organize responses as a factor taking levels ordered from “Poor” to “Excellent”:
+
+```{r}
+#Convert variable type from char to factor
+brfss_overall_health =
+  brfss_overall_health |> 
+  mutate(response = factor(
+    response, 
+    #we define the levels to have the 5 response types.
+    levels = c ("Poor", "Fair", "Good", "Very good", "Excellent"), 
+    #the categorical variable "response" is ordered so we indicate it as so
+    ordered = TRUE)
+    )
+  
+```
+
+### Using this dataset, do or answer the following:
+
+In 2002, which states were observed at 7 or more locations? What about in 2010?
+
+```{r}
+state20027cnt = 
+  brfss_overall_health |> 
+  filter(year == 2002) |>   #filter to include responses in 2002 only
+  group_by(locationabbr) |>  #group by the state abbreviations
+  summarize(num = n()) |>    #summarize the different response types 
+  mutate(num = num/5) |>     #we know that there are 5 responses per location so we can get the number by                                   dividing
+  arrange(desc(num))         #arrange by descending order for viewing ease
+
+#output a table that shows stsates that have more than 7 locations and a state that had 6
+state20027cnt |> 
+  head(7) |> 
+  knitr::kable(digits = 2)
+```
+
+* In 2002, PA, MA, NJ, CT, FL, and NC were states that were observed at 7 or more locations
+
+```{r}
+state20107cnt = 
+  brfss_overall_health |> 
+  filter(year == 2010) |>   #filter to include responses in 2010 only
+  group_by(locationabbr) |>  #group by the state abbreviations
+  summarize(num = n()) |>    #summarize the different response types 
+  mutate(num = num/5) |>     #we know that there are 5 responses per location so we can get the number by                                   dividing
+  arrange(desc(num))         #arrange by descending order for viewing ease
+
+#output a table that shows stsates that have more than 7 locations and a state that had 6
+state20107cnt |>
+  head(15) |> 
+  knitr::kable(digits = 2)
+```
+
+* In 2010, FL, NJ, TX, CA, MD, NC, NE, WA, MA, NY, OH, CO, PA, and SC, were states that were observed at 7 or more locations.
+
+### Construct a dataset that is limited to...
+Excellent responses, and contains, year, state, and a variable that averages the `data_value` across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+
+```{r}
+brfss_avg = 
+  brfss_overall_health |> 
+  select(year, locationabbr, response, data_value) |>
+  filter(response == "Excellent") |> 
+  group_by(year, locationabbr) |> 
+  summarize(mean_data = mean(data_value, na.rm = TRUE))
+
+brfss_avg |> 
+  ggplot(aes(x = year, y = mean_data)) + 
+  geom_line(aes(color = locationabbr), alpha = .5)
+```
+
+### Make a two-panel plot showing...
+for the years 2006, and 2010, distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+```{r}
+#NY in 2006
+brfssNY2006 =
+  brfss_overall_health |> 
+  filter(year == 2006) |> 
+  filter(locationabbr == "NY")
+
+#Plot
+brfssNY2006plot = 
+  brfssNY2006 |> 
+  ggplot(aes(x = response, y = data_value, color = locationdesc)) +
+  geom_point()
+
+#NY in 2010
+brfssNY2010 =
+  brfss_overall_health |> 
+  filter(year == 2010) |> 
+  filter(locationabbr == "NY")
+
+brfssNY2010plot =
+  brfssNY2010 |> 
+  ggplot(aes(x = response, y = data_value, color = locationdesc)) +
+  geom_point()
+
+brfssNY2006plot + brfssNY2010plot
+```
+
