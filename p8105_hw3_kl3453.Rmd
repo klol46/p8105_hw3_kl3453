@@ -270,3 +270,91 @@ brfssNY2010plot =
 brfssNY2006plot + brfssNY2010plot
 ```
 
+# Problem 3
+
+```{r}
+#Import data + clean
+
+#Retains the variable labels/details
+demo_raw = 
+  read_csv("./data/nhanes_covar.csv") |> 
+  janitor::clean_names()
+
+
+demo = 
+  read_csv("./data/nhanes_covar.csv", skip = 4) |> 
+  janitor::clean_names()
+accel = 
+  read_csv("./data/nhanes_accel.csv") |> 
+  janitor::clean_names()
+```
+
+## Load, tidy, merge, and otherwise organize the data sets.
+
+Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).
+
+```{r}
+#Tidy 
+
+## Tidy Accel (Long)
+accel_wide = 
+  accel |> 
+  pivot_longer(
+    min1:min1440,
+    names_to = "minuteofday", 
+    values_to = "mimsaccel")
+```
+* We tidy accel in order to allow it to merge with demo data.
+
+```{r}
+## Filter Demo
+demo_filter =
+  demo |>
+  
+  #Filter
+  filter(age >= 21) |> #keep those that are 21 y/o or older
+  filter(!is.na(education)) |> #filter out missing demograph (education) data
+  filter(!is.na(sex)) |> 
+  
+  #Factor - Education
+  mutate(education = factor(
+    education, 
+    #we define the levels to have 3 education categories
+    levels = c (1, 2, 3), 
+    #the categorical variable "education" is ordered so we indicate it as so
+    ordered = TRUE)
+    ) |> 
+  
+  #Factor - Gender
+  mutate(sex = factor(
+    sex,
+    levels = c (1,2),
+    ordered = TRUE)
+  )
+```
+* Filter out <21 y/o and missing demographic (eduation) variables
+* Apply factors to categorical variables, sex and education.
+
+```{r}
+#Merge
+accel_demo =
+  left_join(demo_filter, accel_wide, by = "seqn")
+```
+
+
+## Produce a reader-friendly table...
+for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
+
+```{r}
+#Clean Data
+men_women_edu = 
+  demo_filter |> 
+  group_by(education) |> 
+  count(sex)
+
+#Plot
+  men_women_edu |> 
+  ggplot(aes(x = education, y = n, color = sex)) +
+  geom_point()
+```
+
