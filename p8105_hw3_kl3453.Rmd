@@ -302,7 +302,8 @@ accel_wide =
   pivot_longer(
     min1:min1440,
     names_to = "minuteofday", 
-    values_to = "mimsaccel")
+    values_to = "mimsaccel",
+    names_prefix = "min")
 ```
 * We tidy accel in order to allow it to merge with demo data.
 
@@ -338,7 +339,14 @@ demo_filter =
 ```{r}
 #Merge
 accel_demo =
-  left_join(demo_filter, accel_wide, by = "seqn")
+  left_join(demo_filter, accel_wide, by = "seqn") |> 
+  
+  #Factor - minsofday (It is like a short continuous but I Just store in factors because it's ordered)
+  mutate(minuteofday = factor(
+    minuteofday,
+    levels = c(1:1440),
+    ordered = TRUE)
+  )
 ```
 
 
@@ -357,4 +365,82 @@ men_women_edu =
   ggplot(aes(x = education, y = n, color = sex)) +
   geom_point()
 ```
+
+## Traditional analyses of accelerometer data focus on the total activity over the day. 
+Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+```{r}
+#Clean Data
+total_activity = 
+  accel_demo |> 
+  group_by(seqn,age, education, sex) |> 
+  summarize(sum_mim = sum(mimsaccel))
+
+#plot
+#Separate into 3 Education GRoups (in order to plot panels)
+education1 = 
+  total_activity |> 
+  filter(education == 1) |> 
+  ggplot(aes(x = age, y = sum_mim, color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+education2 =
+  total_activity |> 
+  filter(education == 2) |> 
+  ggplot(aes(x = age, y = sum_mim, color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+education3 = 
+  total_activity |> 
+  filter(education == 3) |> 
+  ggplot(aes(x = age, y = sum_mim, color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+education1 + education2 + education3
+```
+
+* For all 3 education groups there is an overall decreasing trend in total accelerometer activity as age increases. 
+
+* For education groups 2 and 3, it seems like the total accerometer activity in females is a bit higher than males 
+
+## Make a three-panel plot...
+that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+
+```{r}
+#Clean Data
+accel_overtime = 
+  accel_demo |> 
+  group_by(minuteofday, education, sex) |> 
+  summarize(mean_min = mean(mimsaccel))
+
+
+
+#plot data
+edu1time = 
+  accel_overtime |> 
+  filter(education == 1) |> 
+  ggplot(aes(x = minuteofday, y = mean_min, color = sex)) +
+  geom_point() + 
+  geom_smooth(se = FALSE)
+
+edu2time = 
+  accel_overtime |> 
+  filter(education == 2) |> 
+  ggplot(aes(x = minuteofday, y = mean_min, color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+edu3time = 
+  accel_overtime |> 
+  filter(education == 3) |> 
+  ggplot(aes(x = minuteofday, y = mean_min, color = sex)) + 
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+edu1time + edu2time + edu3time
+```
+
 
